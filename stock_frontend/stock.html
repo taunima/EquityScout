@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EquityScout</title>
+    <link rel="stylesheet" href="/stock_frontend/stock.css">
+</head>
+<body>
+    <header>
+        <h1>EquityScout</h1>
+        <form id="add-form">
+            <input id="ticker-input" type="text" placeholder="Add a ticker (e.g. MSFT)" autocomplete="off">
+            <button type="submit">Add</button>
+        </form>
+        <p id="message"></p>
+    </header>
+
+    <main>
+        <ul id="watchlist"></ul>
+        <p id="updated"></p>
+    </main>
+
+    <script src="/stock_frontend/stock.js"></script>
+</body>
+</html>
