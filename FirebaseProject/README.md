@@ -1,6 +1,6 @@
-# Personal Finance Tracker
+# Stock Watchlist Tracker
 
-Creating a cloud database that will allow me to track, edit and delete my spending history.
+Creating a cloud database that will allow me to track, edit and delete stocks that I am interested in.
 
 ## Instructions for Build and Use
 

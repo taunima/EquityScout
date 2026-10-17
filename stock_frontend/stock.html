@@ -15,12 +15,30 @@
         </form>
         <p id="message"></p>
     </header>
-
     <main>
         <ul id="watchlist"></ul>
         <p id="updated"></p>
+        <section id="detail" hidden>
+            <div class="detail-header">
+                <h2 id="detail-ticker"></h2>
+                <button id="detail-close" class="remove" title="Close">✕</button>
+            </div>
+            <p id="detail-message"></p>
+            <h3>Notes</h3>
+            <form id="note-form">
+                <textarea id="note-input" rows="3" placeholder="Write a note about this stock…"></textarea>
+                <button type="submit">Add note</button>
+            </form>
+            <ul id="notes-list"></ul>
+            <h3>Trades</h3>
+            <form id="trade-form" class="inline-form">
+                <input id="entry-price" type="number" step="0.01" min="0" placeholder="Entry price" required>
+                <input id="entry-date" type="date" required>
+                <button type="submit">Add trade</button>
+            </form>
+            <ul id="trades-list"></ul>
+        </section>
     </main>
-
     <script src="/stock_frontend/stock.js"></script>
 </body>
 </html>

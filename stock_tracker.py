@@ -2,6 +2,9 @@ import os
 import threading
 import time
 import requests
+import webbrowser
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request, send_from_directory
 from google.api_core.exceptions import NotFound
@@ -32,10 +35,21 @@ def fetch_quote(ticker):
         return None
     return data
 
+def market_is_open():
+    now = datetime.now(ZoneInfo("America/New_York"))
+    if now.weekday() >= 5:
+        return False
+    open_time = now.replace(hour=9, minute=30, second=0, microsecond=0)
+    close_time = now.replace(hour=16, minute=0, second=0, microsecond=0)
+    return open_time <= now <= close_time
 
 def poll_prices():
     # Runs forever in a background thread while the app is running
     while True:
+        if not market_is_open():
+            print("Market closed, skipping update")
+            time.sleep(POLL_SECONDS)
+            continue
         tickers = db.get_watchlist()
 
         for ticker in tickers: # Grabbing one ticker at a time.
@@ -127,5 +141,6 @@ def close_trade(ticker, trade_id):
 if __name__ == "__main__":
     # daemon=True means the thread stops when you stop the app (Ctrl+C)
     threading.Thread(target=poll_prices, daemon=True).start()
+    threading.Timer(1, lambda: webbrowser.open("http://127.0.0.1:5000")).start()
     # use_reloader=False stops Flask from starting the polling thread twice
-    app.run(debug=True, use_reloader=False)
+    app.run(debug=True, use_reloader=False, port=5001)

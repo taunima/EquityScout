@@ -39,25 +39,18 @@ def _stock(ticker):
     return db.collection("watchlist").document(ticker.upper())
 
 def add_stock(ticker):
-    """INSERT INTO watchlist (ticker_symbol) VALUES (?)"""
     _stock(ticker).set({
         "ticker_symbol": ticker.upper(),
         "added_at": firestore.SERVER_TIMESTAMP,
     })
 
 def get_watchlist():
-    """SELECT ticker_symbol FROM watchlist  (used by the Finnhub polling loop)"""
     return [doc.id for doc in db.collection("watchlist").stream()]
 
 def remove_stock(ticker):
-    """DELETE FROM watchlist WHERE ticker_symbol = ?
-    Firestore doesn't delete subcollections with their parent, so
-    recursive_delete removes the stock's prices, notes, and trades as well."""
     db.recursive_delete(_stock(ticker))
 
 def save_quote(ticker, quote):
-    """Save one Finnhub /quote response as a snapshot.
-    Finnhub keys: o=open, h=high, l=low, c=current, pc=previous close, t=unix time"""
     _stock(ticker).collection("price_tracking").add({
         "open": quote["o"],
         "high": quote["h"],
@@ -68,7 +61,6 @@ def save_quote(ticker, quote):
     })
 
 def get_prices(ticker, limit=100):
-    """Most recent snapshots first."""
     query = (_stock(ticker).collection("price_tracking")
              .order_by("timestamp", direction=firestore.Query.DESCENDING)
              .limit(limit))
@@ -97,7 +89,6 @@ def add_trade(ticker, entry_price, entry_date, exit_price=None, exit_date=None):
     })
 
 def close_trade(ticker, trade_id, exit_price, exit_date):
-    """UPDATE trade_table SET exit_price = ?, exit_date = ? WHERE id = ?"""
     _stock(ticker).collection("trades").document(trade_id).update({
         "exit_price": exit_price,
         "exit_date": exit_date,
