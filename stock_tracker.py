@@ -8,7 +8,6 @@ from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request, send_from_directory
 from google.api_core.exceptions import NotFound
-
 from stock_db import firebase_db as db
 
 load_dotenv()
@@ -18,10 +17,7 @@ POLL_SECONDS = 60
 
 app = Flask(__name__, static_folder="stock_frontend")
 
-def fetch_quote(ticker):
-    """Return Finnhub's quote dict for one ticker, e.g.
-    {"c": 227.5, "h": 229.1, "l": 225.0, "o": 226.0, "pc": 225.9, "t": 1728480000}
-    Returns None if the request fails or the ticker is invalid."""
+def fetch_quote(ticker): # Grabs data from finnhub so that we can use that data.
     resp = requests.get(
         "https://finnhub.io/api/v1/quote",
         params={"symbol": ticker, "token": FINNHUB_KEY},
@@ -35,7 +31,7 @@ def fetch_quote(ticker):
         return None
     return data
 
-def market_is_open():
+def market_is_open(): # Shows when the market is open and closed in America for the weekdays.
     now = datetime.now(ZoneInfo("America/New_York"))
     if now.weekday() >= 5:
         return False
@@ -55,24 +51,24 @@ def poll_prices():
         for ticker in tickers: # Grabbing one ticker at a time.
             try: # Needed for the event that it returns an error.
                 quote = fetch_quote(ticker)
-                if quote is not None: # It will then save the ticker and it's data, then show it
+                if quote is not None: # It will then save the ticker and it's data
                     db.save_quote(ticker, quote)
                     print(f"Saved {ticker}: ${quote['c']}")
                 else:
                     print(f"No data for {ticker}")
             except Exception as e:
                 print(f"Error with {ticker}: {e}")
-        time.sleep(POLL_SECONDS) # The amount of seconds it takes to update.
+        time.sleep(POLL_SECONDS) # The waiting inbetween the updates of the stocks
 
 @app.route("/")
 def index():
-    return send_from_directory("stock_frontend", "stock.html")
+    return send_from_directory("stock_frontend", "index.html")
 
-@app.route("/api/watchlist", methods=["GET"]) # To actually fetch the watchlist
+@app.route("/api/watchlist", methods=["GET"]) # Actually grabs the watchlist from the database, then shows it to the frontend.
 def get_watchlist():
-   return jsonify(db.get_watchlist())
+    return jsonify(db.get_watchlist())
 
-@app.route("/api/watchlist", methods=["POST"]) # To add to your watchlist
+@app.route("/api/watchlist", methods=["POST"]) # Adds stocks to your watchlist and ensures that if it is not a valid ticker it will throw an error
 def add_stock():
     ticker = request.json.get("ticker", "").upper()
     quote = fetch_quote(ticker) if ticker else None
@@ -80,23 +76,23 @@ def add_stock():
         return jsonify({"error": f"'{ticker}' is not a valid ticker"}), 400
     db.add_stock(ticker)
     db.save_quote(ticker, quote)
-    return jsonify({"added": ticker}, 201)
+    return jsonify({"added": ticker}), 201
 
-@app.route("/api/watchlist/<ticker>", methods=["DELETE"]) # To delete from you watchlist
+@app.route("/api/watchlist/<ticker>", methods=["DELETE"]) # Deletes stocks from your watchlist
 def remove_stock(ticker):
     db.remove_stock(ticker)
     return jsonify({"removed": ticker.upper()})
 
-@app.route("/api/prices/<ticker>", methods=["GET"]) # To grab the prices from the api.
+@app.route("/api/prices/<ticker>", methods=["GET"]) # Grabs the actual prices from the database to show to the frontend.
 def get_prices(ticker):
     return jsonify(db.get_prices(ticker))
 
 
-@app.route("/api/notes/<ticker>", methods=["GET"])
+@app.route("/api/notes/<ticker>", methods=["GET"]) # Lets you use the notes table that is saved in the database from the frontend.
 def get_notes(ticker):
     return jsonify(db.get_notes(ticker))
 
-@app.route("/api/notes/<ticker>", methods=["POST"])
+@app.route("/api/notes/<ticker>", methods=["POST"]) # Adds the notes you wrote for the specific stock and throws an error incase a empty note is tried to be saved.
 def add_notes(ticker):
     text = request.json.get("text", "").strip()
     if not text:
@@ -104,17 +100,17 @@ def add_notes(ticker):
     db.add_note(ticker, text)
     return jsonify({"added": True}), 201
 
-@app.route("/api/notes/<ticker>", methods=["DELETE"])
+@app.route("/api/notes/<ticker>/<note_id>", methods=["DELETE"]) # Deletes notes if needed.
 def delete_note(ticker, note_id):
     db.delete_note(ticker, note_id)
     return jsonify({"removed": note_id})
 
 
-@app.route("/api/trades/<ticker>", methods=["GET"])
+@app.route("/api/trades/<ticker>", methods=["GET"]) # Grabs from the trades table.
 def get_trades(ticker):
     return jsonify(db.get_trades(ticker))
 
-@app.route("/api/trades/<ticker>", methods=["POST"])
+@app.route("/api/trades/<ticker>", methods=["POST"]) # This logs the trade you made on an actual trading account of the entry point and date.
 def add_trade(ticker):
     data = request.json
     try:
@@ -124,13 +120,13 @@ def add_trade(ticker):
     db.add_trade(ticker, entry_price, data.get("entry_date"))
     return jsonify({"added": True}), 201
 
-@app.route("/api/trades/<ticker>/<trade_id>", methods=["PATCH"])
+@app.route("/api/trades/<ticker>/<trade_id>", methods=["PATCH"]) # This closes the opened trade with adding its exit price and date.
 def close_trade(ticker, trade_id):
     data = request.json
     try:
         exit_price = float(data["exit_price"])
     except (KeyError, ValueError, TypeError):
-        return jsonify({"error": "Exit price must be a number"}), 401
+        return jsonify({"error": "Exit price must be a number"}), 400
     try:
         db.close_trade(ticker, trade_id, exit_price, data.get("exit_date"))
     except NotFound:
@@ -141,6 +137,6 @@ def close_trade(ticker, trade_id):
 if __name__ == "__main__":
     # daemon=True means the thread stops when you stop the app (Ctrl+C)
     threading.Thread(target=poll_prices, daemon=True).start()
-    threading.Timer(1, lambda: webbrowser.open("http://127.0.0.1:5000")).start()
+    threading.Timer(1, lambda: webbrowser.open("http://127.0.0.1:5001")).start()
     # use_reloader=False stops Flask from starting the polling thread twice
     app.run(debug=True, use_reloader=False, port=5001)

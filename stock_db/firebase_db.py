@@ -11,22 +11,14 @@ Structure (SQL table -> Firestore):
 
 The ticker is the document ID, so the ticker_symbol_id foreign keys go away:
 child records live *under* the stock they belong to.
-
-Setup:
-    pip install firebase-admin python-dotenv
-    Firebase console -> Project settings -> Service accounts -> Generate new private key
-    Save the file as serviceAccountKey.json in the project root (it's in .gitignore)
-    or point FIREBASE_KEY_PATH in .env at it.
 """
 
 import os
-
 import firebase_admin
 from dotenv import load_dotenv
 from firebase_admin import credentials, firestore
 
 load_dotenv()
-
 _KEY_PATH = os.getenv("FIREBASE_KEY_PATH", "serviceAccountKey.json")
 
 if not firebase_admin._apps:
@@ -34,23 +26,23 @@ if not firebase_admin._apps:
 
 db = firestore.client()
 
-
+# This to open the app to the tables.
 def _stock(ticker):
     return db.collection("watchlist").document(ticker.upper())
 
-def add_stock(ticker):
+def add_stock(ticker): # The main components of the stock being saved by the user.
     _stock(ticker).set({
         "ticker_symbol": ticker.upper(),
         "added_at": firestore.SERVER_TIMESTAMP,
     })
 
-def get_watchlist():
+def get_watchlist(): # Making the actually watchlist for the stocks.
     return [doc.id for doc in db.collection("watchlist").stream()]
 
 def remove_stock(ticker):
     db.recursive_delete(_stock(ticker))
 
-def save_quote(ticker, quote):
+def save_quote(ticker, quote): # This is showing all of the data that we get from finnhub for this table.
     _stock(ticker).collection("price_tracking").add({
         "open": quote["o"],
         "high": quote["h"],
@@ -60,14 +52,14 @@ def save_quote(ticker, quote):
         "timestamp": quote["t"],
     })
 
-def get_prices(ticker, limit=100):
+def get_prices(ticker, limit=100): # The prices of the stocks.
     query = (_stock(ticker).collection("price_tracking")
              .order_by("timestamp", direction=firestore.Query.DESCENDING)
              .limit(limit))
     return [doc.to_dict() for doc in query.stream()]
 
 
-def add_note(ticker, text):
+def add_note(ticker, text): 
     _stock(ticker).collection("notes").add({
         "personal_notes": text,
         "created_at": firestore.SERVER_TIMESTAMP,
